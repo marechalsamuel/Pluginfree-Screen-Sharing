@@ -5,7 +5,7 @@
 // Documentation  - github.com/muaz-khan/WebRTC-Experiment/tree/master/Pluginfree-Screen-Sharing
 
 var isbroadcaster = false;
-var conference = function(config) {
+var conference = function (config) {
     if (typeof adapter === 'undefined' || typeof adapter.browserDetails === 'undefined') {
         // https://webrtc.github.io/adapter/adapter-latest.js
         console.warn('adapter.js is recommended.');
@@ -18,8 +18,8 @@ var conference = function(config) {
     }
 
     var self = {
-            userToken: uniqueToken()
-        },
+        userToken: uniqueToken()
+    },
         channels = '--',
         isGetNewRoom = true,
         participants = 0,
@@ -30,7 +30,7 @@ var conference = function(config) {
     function openDefaultSocket() {
         defaultSocket = config.openSocket({
             onmessage: defaultSocketResponse,
-            callback: function(socket) {
+            callback: function (socket) {
                 defaultSocket = socket;
             }
         });
@@ -58,13 +58,13 @@ var conference = function(config) {
         var socketConfig = {
             channel: _config.channel,
             onmessage: socketResponse,
-            onopen: function() {
+            onopen: function () {
                 if (isofferer && !peer) initPeer();
                 sockets[sockets.length] = socket;
             }
         };
 
-        socketConfig.callback = function(_socket) {
+        socketConfig.callback = function (_socket) {
             socket = _socket;
             this.onopen();
         };
@@ -77,7 +77,7 @@ var conference = function(config) {
             peer;
 
         var peerConfig = {
-            oniceconnectionstatechange: function(p) {
+            oniceconnectionstatechange: function (p) {
                 if (!isofferer) return;
 
                 if (p && p.iceConnectionState) {
@@ -85,7 +85,7 @@ var conference = function(config) {
                 }
             },
             attachStream: config.attachStream,
-            onICE: function(candidate) {
+            onICE: function (candidate) {
                 socket && socket.send({
                     userToken: self.userToken,
                     candidate: {
@@ -94,7 +94,7 @@ var conference = function(config) {
                     }
                 });
             },
-            onRemoteStream: function(stream) {
+            onRemoteStream: function (stream) {
                 if (isbroadcaster) return;
 
                 try {
@@ -240,11 +240,11 @@ var conference = function(config) {
         if (config.attachStream) config.attachStream.stop();
     }
 
-    window.addEventListener('beforeunload', function() {
+    window.addEventListener('beforeunload', function () {
         leave();
     }, false);
 
-    window.addEventListener('keyup', function(e) {
+    window.addEventListener('keyup', function (e) {
         if (e.keyCode == 116)
             leave();
     }, false);
@@ -282,7 +282,7 @@ var conference = function(config) {
 
     openDefaultSocket();
     return {
-        createRoom: function(_config) {
+        createRoom: function (_config) {
             self.roomName = _config.roomName || 'Anonymous';
             self.roomToken = uniqueToken();
 
@@ -290,7 +290,7 @@ var conference = function(config) {
             isGetNewRoom = false;
             startBroadcasting();
         },
-        joinRoom: function(_config) {
+        joinRoom: function (_config) {
             self.roomToken = _config.roomToken;
             isGetNewRoom = false;
 
@@ -310,7 +310,9 @@ var conference = function(config) {
 // Documentation - https://github.com/muaz-khan/WebRTC-Experiment/tree/master/RTCPeerConnection
 // RTCPeerConnection-v1.5.js
 
-var iceServers = [];
+var iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' }
+];
 
 if (typeof IceServersHandler !== 'undefined') {
     iceServers = IceServersHandler.getIceServers();
@@ -339,9 +341,15 @@ function RTCPeerConnectionHandler(options) {
 
     var peer = new PeerConnection(iceServers);
 
-    peer.onicecandidate = function(event) {
-        if (event.candidate)
+    peer.onicecandidate = function (event) {
+        if (event.candidate) {
             options.onICE(event.candidate);
+            const candidate = event.candidate;
+            if (candidate.candidate.includes('typ relay')) {
+                // Ignore relay candidates
+                return;
+            }
+        }
     };
 
     // attachStream = MediaStream;
@@ -349,7 +357,7 @@ function RTCPeerConnectionHandler(options) {
         if ('addStream' in peer) {
             peer.addStream(options.attachStream);
         } else if ('addTrack' in peer) {
-            options.attachStream.getTracks().forEach(function(track) {
+            options.attachStream.getTracks().forEach(function (track) {
                 peer.addTrack(track, options.attachStream);
             });
         } else {
@@ -368,7 +376,7 @@ function RTCPeerConnectionHandler(options) {
             if ('addStream' in peer) {
                 peer.addStream(stream);
             } else if ('addTrack' in peer) {
-                stream.getTracks().forEach(function(track) {
+                stream.getTracks().forEach(function (track) {
                     peer.addTrack(track, stream);
                 });
             } else {
@@ -378,11 +386,11 @@ function RTCPeerConnectionHandler(options) {
     }
 
     if ('addStream' in peer) {
-        peer.onaddstream = function(event) {
+        peer.onaddstream = function (event) {
             var remoteMediaStream = event.stream;
 
             // onRemoteStreamEnded(MediaStream)
-            addStreamStopListener(remoteMediaStream, function() {
+            addStreamStopListener(remoteMediaStream, function () {
                 if (options.onRemoteStreamEnded) options.onRemoteStreamEnded(remoteMediaStream);
             });
 
@@ -392,7 +400,7 @@ function RTCPeerConnectionHandler(options) {
             console.debug('on:add:stream', remoteMediaStream);
         };
     } else if ('addTrack' in peer) {
-        peer.ontrack = peer.onaddtrack = function(event) {
+        peer.ontrack = peer.onaddtrack = function (event) {
             event.stream = event.streams[event.streams.length - 1];
 
             if (dontDuplicateOnAddTrack[event.stream.id] && adapter.browserDetails.browser !== 'safari') return;
@@ -402,7 +410,7 @@ function RTCPeerConnectionHandler(options) {
             var remoteMediaStream = event.stream;
 
             // onRemoteStreamEnded(MediaStream)
-            addStreamStopListener(remoteMediaStream, function() {
+            addStreamStopListener(remoteMediaStream, function () {
                 if (options.onRemoteStreamEnded) options.onRemoteStreamEnded(remoteMediaStream);
             });
 
@@ -432,9 +440,9 @@ function RTCPeerConnectionHandler(options) {
     function createOffer() {
         if (!options.onOfferSDP) return;
 
-        peer.createOffer(sdpConstraints).then(function(sessionDescription) {
+        peer.createOffer(sdpConstraints).then(function (sessionDescription) {
             sessionDescription.sdp = setBandwidth(sessionDescription.sdp);
-            peer.setLocalDescription(sessionDescription).then(function() {
+            peer.setLocalDescription(sessionDescription).then(function () {
                 options.onOfferSDP(sessionDescription);
             }).catch(onSdpError);
         }).catch(onSdpError);
@@ -446,10 +454,10 @@ function RTCPeerConnectionHandler(options) {
         if (!options.onAnswerSDP) return;
 
         //options.offerSDP.sdp = addStereo(options.offerSDP.sdp);
-        peer.setRemoteDescription(new SessionDescription(options.offerSDP)).then(function() {
-            peer.createAnswer(sdpConstraints).then(function(sessionDescription) {
+        peer.setRemoteDescription(new SessionDescription(options.offerSDP)).then(function () {
+            peer.createAnswer(sdpConstraints).then(function (sessionDescription) {
                 sessionDescription.sdp = setBandwidth(sessionDescription.sdp);
-                peer.setLocalDescription(sessionDescription).then(function() {
+                peer.setLocalDescription(sessionDescription).then(function () {
                     options.onAnswerSDP(sessionDescription);
                 }).catch(onSdpError);
             }).catch(onSdpError);
@@ -494,8 +502,8 @@ function RTCPeerConnectionHandler(options) {
     }
 
     peer.isConnected = false;
-    peer.oniceconnectionstatechange = peer.onsignalingstatechange = function() {
-        if(peer && peer.isConnected && peer.iceConnectionState == 'failed') return;
+    peer.oniceconnectionstatechange = peer.onsignalingstatechange = function () {
+        if (peer && peer.isConnected && peer.iceConnectionState == 'failed') return;
         options.oniceconnectionstatechange(peer);
     };
 
@@ -507,13 +515,13 @@ function RTCPeerConnectionHandler(options) {
     }
 
     return {
-        addAnswerSDP: function(sdp) {
+        addAnswerSDP: function (sdp) {
             console.log('setting remote description', sdp.sdp);
-            peer.setRemoteDescription(new SessionDescription(sdp)).catch(onSdpError).then(function() {
+            peer.setRemoteDescription(new SessionDescription(sdp)).catch(onSdpError).then(function () {
                 peer.isConnected = true;
             });
         },
-        addICE: function(candidate) {
+        addICE: function (candidate) {
             console.log('adding candidate', candidate.candidate);
 
             peer.addIceCandidate(new IceCandidate({
@@ -547,7 +555,7 @@ function getUserMedia(options) {
         navigator.mediaDevices.getUserMedia(options.constraints || {
             audio: false,
             video: video_constraints
-        }).then(streaming).catch(options.onerror || function(e) {
+        }).then(streaming).catch(options.onerror || function (e) {
             console.error(e);
         });
         return;
@@ -559,7 +567,7 @@ function getUserMedia(options) {
     n.getMedia(options.constraints || {
         audio: true,
         video: video_constraints
-    }, streaming, options.onerror || function(e) {
+    }, streaming, options.onerror || function (e) {
         console.error(e);
     });
 
@@ -567,22 +575,22 @@ function getUserMedia(options) {
 }
 
 function addStreamStopListener(stream, callback) {
-    stream.addEventListener('ended', function() {
+    stream.addEventListener('ended', function () {
         callback();
-        callback = function() {};
+        callback = function () { };
     }, false);
-    stream.addEventListener('inactive', function() {
+    stream.addEventListener('inactive', function () {
         callback();
-        callback = function() {};
+        callback = function () { };
     }, false);
-    stream.getTracks().forEach(function(track) {
-        track.addEventListener('ended', function() {
+    stream.getTracks().forEach(function (track) {
+        track.addEventListener('ended', function () {
             callback();
-            callback = function() {};
+            callback = function () { };
         }, false);
-        track.addEventListener('inactive', function() {
+        track.addEventListener('inactive', function () {
             callback();
-            callback = function() {};
+            callback = function () { };
         }, false);
     });
 }
